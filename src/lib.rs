@@ -10,9 +10,13 @@
 
 mod process;
 pub mod net;
+pub mod policy;
+pub mod fs;
 
 pub use process::{ProcessInfo, ProcessTree};
 pub use net::{Connection, connections_for};
+pub use policy::{Policy, Rule, Severity, Snapshot, Verdict, Action, FsEvent};
+pub use fs::{Baseline, FileState, scan_dir, diff, is_sensitive};
 
 /// A snapshot of one process in the tree.
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]

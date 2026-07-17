@@ -8,9 +8,9 @@ agent hijack — live in **runtime behavior**, not text. Sentinel applies
 anti-cheat / EDR discipline to agents: it watches an agent's process tree,
 network, and filesystem at runtime and enforces a policy, with a kill-switch.
 
-This is a work in progress. What exists today is the **Phase 0 spike**: a
-cross-platform process-tree observer that proves we can map, from any running
-agent's PID, every process it has spawned.
+This is a work in progress. What exists today is real, compiling, and tested:
+a process-tree observer (Phase 0), a PID-attributed network observer (Phase 1),
+and a filesystem watch + static policy engine with a kill-switch (Phase 2).
 
 ## Status
 
@@ -18,9 +18,10 @@ agent's PID, every process it has spawned.
 |-------|-------|-------|
 | 0 — Spike | Cross-platform process-tree enumeration (Windows + Linux) | ✅ done, tests green |
 | 1 — Observe | Network connection enumeration (Windows `GetExtendedTcpTable`, PID-attributed) + `observe` CLI emitting JSON | ✅ done, tests green |
-| 2 — MVP | Filesystem observation, static policy engine, Python adapter, dashboard w/ kill-switch | 🟡 next |
-| 3 — v1 | Behavioral anomaly baseline, session replay, auto-containment, multi-agent | ⚪ planned |
-| 4 — stretch | ML anomaly detection, autonomous red-team loop, eBPF/Win32 parity | ⚪ planned |
+| 2 — Enforce | Filesystem watch, static policy engine, `enforce` CLI with Windows kill-switch (`TerminateProcess`) | ✅ done, tests green |
+| 3 — MVP | Python agent adapter, Next.js dashboard (live threat graph + kill button), anomaly baseline | 🟡 next |
+| 4 — v1 | Behavioral anomaly baseline, session replay, auto-containment, multi-agent | ⚪ planned |
+| 5 — stretch | ML anomaly detection, autonomous red-team loop, eBPF/Win32 parity | ⚪ planned |
 
 ## What the code does (today)
 
@@ -74,21 +75,46 @@ On this Windows host the observer correctly resolves live connections
 connection path is scheduled for Phase 1 parity; until then it returns an
 empty list rather than fabricated data.
 
+## Phase 2 — policy + kill-switch
+
+`sentinel enforce <pid> --policy policy.json` evaluates a declarative policy
+against the live snapshot and, on `deny`, triggers the kill-switch (Windows:
+`TerminateProcess` on the watched root). The engine is pure and unit-tested:
+a `Snapshot` in, a `Verdict { allow | flag | deny, reasons }` out.
+
+```bash
+cargo run --bin sentinel-cli enforce <pid> --policy policy.deny.json
+```
+
+```json
+{
+  "pid": 2,
+  "verdict": "allow",
+  "reasons": [],
+  "kill_switch": false
+}
+```
+
+Rules are data, not code — `policy.deny.json` (in-repo) flags external egress,
+blocklisted hosts, credential writes, and known-bad binaries. The filesystem
+watch (`fs::scan_dir` + `fs::diff`) detects new/modified files under watched
+paths and marks credential drops (`.env`, `id_rsa`, `*.pem`, …) as sensitive.
+
 ## Build & test
 
 ```bash
 cargo build
-cargo test      # 5 tests, green on Windows
+cargo test      # 15 tests, green on Windows
 ```
 
 Requires Rust 1.74+. On Windows, the `windows-sys` feature set pulls the
-Toolhelp, Process Status, and IP Helper APIs.
+Toolhelp, Process Status, IP Helper, and Threading APIs.
 
 ## Architecture (target)
 
 ```
-sentinel-observer   (Rust)  — process/network/fs observation  ◀ today: process + net
-sentinel-policy     (Rust)  — declarative rules + anomaly baseline → ALLOW/DENY/FLAG
+sentinel-observer   (Rust)  — process/network/fs observation  ◀ today: all three
+sentinel-policy     (Rust)  — declarative rules + anomaly baseline → allow/flag/deny
 sentinel-agent      (Py)    — wraps an agent's tool-call layer, enforces verdicts
 sentinel-dash       (Next)  — live threat graph, kill-switch, session replay
 ```

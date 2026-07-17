@@ -1,0 +1,24 @@
+{
+  "rules": [
+    {
+      "name": "no external egress from agent",
+      "severity": "deny",
+      "external_connection": true
+    },
+    {
+      "name": "blocklist host",
+      "severity": "deny",
+      "remote_contains": "evil.example"
+    },
+    {
+      "name": "credential write",
+      "severity": "deny",
+      "sensitive_write": true
+    },
+    {
+      "name": "known bad binary in tree",
+      "severity": "deny",
+      "process_name_contains": "cheatengine"
+    }
+  ]
+}
