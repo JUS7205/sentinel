@@ -1,0 +1,23 @@
+[package]
+name = "sentinel"
+version = "0.1.0"
+edition = "2021"
+description = "Sentinel — runtime behavioral guard for AI agents (observer core)"
+license = "MIT"
+repository = "https://github.com/JUS7205/sentinel"
+
+[dependencies]
+# Cross-platform process-tree enumeration.
+[target.'cfg(windows)'.dependencies]
+# Uses Win32 via windows-sys; kept minimal for the Phase-0 spike.
+windows-sys = { version = "0.52", features = [
+    "Win32_Foundation",
+    "Win32_System_Diagnostics_ToolHelp",
+    "Win32_System_ProcessStatus",
+    "Win32_System_Threading",
+] }
+
+[target.'cfg(unix)'.dependencies]
+# Linux/macOS: read via procfs / libc is optional; we use std + /proc.
+
+[dev-dependencies]
