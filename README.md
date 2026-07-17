@@ -1,4 +1,6 @@
-# Sentinel
+# sentinel
+
+[![CI](https://github.com/JUS7205/sentinel/actions/workflows/ci.yml/badge.svg)](https://github.com/JUS7205/sentinel/actions/workflows/ci.yml)
 
 > An anti-cheat engine for AI agents. Runtime behavioral guard — not a prompt filter.
 

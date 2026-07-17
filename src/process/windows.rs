@@ -10,9 +10,7 @@ use windows_sys::Win32::Foundation::CloseHandle;
 use windows_sys::Win32::System::Diagnostics::ToolHelp::{
     CreateToolhelp32Snapshot, Process32First, Process32Next, PROCESSENTRY32, TH32CS_SNAPPROCESS,
 };
-use windows_sys::Win32::System::ProcessStatus::{
-    K32EnumProcessModules, K32GetModuleBaseNameA,
-};
+use windows_sys::Win32::System::ProcessStatus::{K32EnumProcessModules, K32GetModuleBaseNameA};
 use windows_sys::Win32::System::Threading::{
     OpenProcess, PROCESS_QUERY_INFORMATION, PROCESS_VM_READ,
 };
@@ -54,11 +52,7 @@ pub(super) fn collect_all() -> Vec<ProcessInfo> {
 /// process) — we never panic on a single inaccessible process.
 fn decode_name(pid: u32) -> String {
     unsafe {
-        let handle = OpenProcess(
-            PROCESS_QUERY_INFORMATION | PROCESS_VM_READ,
-            0,
-            pid,
-        );
+        let handle = OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, 0, pid);
         if handle == 0 || handle == -1 {
             return format!("<pid {}>", pid);
         }

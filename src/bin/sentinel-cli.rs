@@ -18,7 +18,9 @@ fn main() {
         "observe" => cmd_observe(args.get(2)),
         "enforce" => cmd_enforce(args.get(2), &args[3..]),
         other => {
-            eprintln!("unknown command: {other}\nusage: sentinel <observe|enforce> [pid] [--policy file]");
+            eprintln!(
+                "unknown command: {other}\nusage: sentinel <observe|enforce> [pid] [--policy file]"
+            );
             std::process::exit(2);
         }
     }
@@ -93,7 +95,10 @@ fn cmd_enforce(pid_arg: Option<&String>, rest: &[String]) {
         "reasons": verdict.reasons,
         "kill_switch": verdict.action == Action::Deny,
     });
-    println!("{}", serde_json::to_string_pretty(&out).expect("serialize verdict"));
+    println!(
+        "{}",
+        serde_json::to_string_pretty(&out).expect("serialize verdict")
+    );
 
     if verdict.action == Action::Deny {
         // Kill-switch: terminate the watched root. On Windows this is
@@ -112,9 +117,7 @@ fn cmd_enforce(pid_arg: Option<&String>, rest: &[String]) {
 
 #[cfg(windows)]
 fn kill_process(pid: u32) -> bool {
-    use windows_sys::Win32::System::Threading::{
-        OpenProcess, TerminateProcess, PROCESS_TERMINATE,
-    };
+    use windows_sys::Win32::System::Threading::{OpenProcess, TerminateProcess, PROCESS_TERMINATE};
     unsafe {
         let h = OpenProcess(PROCESS_TERMINATE, 0, pid);
         if h == 0 {

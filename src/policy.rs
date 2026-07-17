@@ -50,18 +50,13 @@ pub struct Rule {
     pub process_name_contains: Option<String>,
 }
 
-#[derive(Debug, Clone, Copy, Deserialize, Serialize, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Clone, Copy, Default, Deserialize, Serialize, PartialEq, Eq, PartialOrd, Ord)]
 #[serde(rename_all = "lowercase")]
 pub enum Severity {
     Info,
+    #[default]
     Warn,
     Deny,
-}
-
-impl Default for Severity {
-    fn default() -> Self {
-        Severity::Warn
-    }
 }
 
 impl Severity {
@@ -152,7 +147,12 @@ impl Policy {
 /// True if any connection reaches a non-private (external) IP.
 pub fn has_external(conns: &[Connection]) -> bool {
     conns.iter().any(|c| {
-        if let Some(ip) = c.remote_addr.split(':').next().and_then(|s| s.parse::<IpAddr>().ok()) {
+        if let Some(ip) = c
+            .remote_addr
+            .split(':')
+            .next()
+            .and_then(|s| s.parse::<IpAddr>().ok())
+        {
             !is_private(ip)
         } else {
             false

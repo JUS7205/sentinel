@@ -58,5 +58,5 @@ mod tests {
     }
 }
 
-mod windows;
 mod unix;
+mod windows;

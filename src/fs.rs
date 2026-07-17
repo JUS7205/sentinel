@@ -40,10 +40,17 @@ pub fn is_sensitive(path: &str) -> bool {
         .unwrap_or("")
         .to_lowercase();
     // A dotfile like `.env` has no extension(); treat its full name as a stem.
-    if SENSITIVE_NAMES.iter().any(|n| name == *n || name.contains(n)) {
+    if SENSITIVE_NAMES
+        .iter()
+        .any(|n| name == *n || name.contains(n))
+    {
         return true;
     }
-    if let Some(ext) = p.extension().and_then(|e| e.to_str()).map(|e| e.to_lowercase()) {
+    if let Some(ext) = p
+        .extension()
+        .and_then(|e| e.to_str())
+        .map(|e| e.to_lowercase())
+    {
         return SENSITIVE_EXTS.contains(&ext.as_str());
     }
     false
@@ -139,13 +146,33 @@ mod tests {
     #[test]
     fn diff_detects_new_and_modified() {
         let base = Baseline::from_files(vec![
-            FileState { path: "a.txt".into(), size: 10, modified_secs: 100 },
-            FileState { path: "b.txt".into(), size: 20, modified_secs: 100 },
+            FileState {
+                path: "a.txt".into(),
+                size: 10,
+                modified_secs: 100,
+            },
+            FileState {
+                path: "b.txt".into(),
+                size: 20,
+                modified_secs: 100,
+            },
         ]);
         let fresh = vec![
-            FileState { path: "a.txt".into(), size: 10, modified_secs: 100 }, // unchanged
-            FileState { path: "b.txt".into(), size: 25, modified_secs: 200 }, // modified
-            FileState { path: "c.txt".into(), size: 5, modified_secs: 300 },  // new
+            FileState {
+                path: "a.txt".into(),
+                size: 10,
+                modified_secs: 100,
+            }, // unchanged
+            FileState {
+                path: "b.txt".into(),
+                size: 25,
+                modified_secs: 200,
+            }, // modified
+            FileState {
+                path: "c.txt".into(),
+                size: 5,
+                modified_secs: 300,
+            }, // new
         ];
         let ev = diff(&base, &fresh, 7);
         assert_eq!(ev.len(), 2);

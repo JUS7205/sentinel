@@ -6,8 +6,7 @@
 
 use super::Connection;
 use windows_sys::Win32::NetworkManagement::IpHelper::{
-    GetExtendedTcpTable, MIB_TCPROW_OWNER_PID, MIB_TCPTABLE_OWNER_PID,
-    TCP_TABLE_OWNER_PID_ALL,
+    GetExtendedTcpTable, MIB_TCPROW_OWNER_PID, MIB_TCPTABLE_OWNER_PID, TCP_TABLE_OWNER_PID_ALL,
 };
 use windows_sys::Win32::Networking::WinSock::AF_INET;
 

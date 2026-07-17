@@ -8,15 +8,15 @@
 //! The public API is identical on every target; the implementation is selected
 //! at compile time via `cfg`.
 
-mod process;
+pub mod fs;
 pub mod net;
 pub mod policy;
-pub mod fs;
+mod process;
 
+pub use fs::{diff, is_sensitive, scan_dir, Baseline, FileState};
+pub use net::{connections_for, Connection};
+pub use policy::{Action, FsEvent, Policy, Rule, Severity, Snapshot, Verdict};
 pub use process::{ProcessInfo, ProcessTree};
-pub use net::{Connection, connections_for};
-pub use policy::{Policy, Rule, Severity, Snapshot, Verdict, Action, FsEvent};
-pub use fs::{Baseline, FileState, scan_dir, diff, is_sensitive};
 
 /// A snapshot of one process in the tree.
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
