@@ -1,6 +1,6 @@
 # sentinel
 
-[![CI](https://github.com/JUS7205/sentinel/actions/workflows/ci.yml/badge.svg)](https://github.com/JUS7205/sentinel/actions/workflows/ci.yml)
+[![Build status](https://ci.appveyor.com/api/projects/status/github/JUS7205/sentinel?svg=true)](https://ci.appveyor.com/project/JUS7205/sentinel)
 
 > An anti-cheat engine for AI agents. Runtime behavioral guard — not a prompt filter.
 
