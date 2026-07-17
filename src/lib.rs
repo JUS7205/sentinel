@@ -9,11 +9,13 @@
 //! at compile time via `cfg`.
 
 mod process;
+pub mod net;
 
 pub use process::{ProcessInfo, ProcessTree};
+pub use net::{Connection, connections_for};
 
 /// A snapshot of one process in the tree.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
 pub struct Process {
     pub pid: u32,
     pub parent_pid: u32,

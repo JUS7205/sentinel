@@ -17,9 +17,10 @@ agent's PID, every process it has spawned.
 | Phase | Scope | State |
 |-------|-------|-------|
 | 0 — Spike | Cross-platform process-tree enumeration (Windows + Linux) | ✅ done, tests green |
-| 1 — MVP | Network + filesystem observation, static policy, Python adapter, dashboard w/ kill-switch | 🟡 next |
-| 2 — v1 | Behavioral anomaly baseline, session replay, auto-containment, multi-agent | ⚪ planned |
-| 3 — stretch | ML anomaly detection, autonomous red-team loop, eBPF/Win32 parity | ⚪ planned |
+| 1 — Observe | Network connection enumeration (Windows `GetExtendedTcpTable`, PID-attributed) + `observe` CLI emitting JSON | ✅ done, tests green |
+| 2 — MVP | Filesystem observation, static policy engine, Python adapter, dashboard w/ kill-switch | 🟡 next |
+| 3 — v1 | Behavioral anomaly baseline, session replay, auto-containment, multi-agent | ⚪ planned |
+| 4 — stretch | ML anomaly detection, autonomous red-team loop, eBPF/Win32 parity | ⚪ planned |
 
 ## What the code does (today)
 
@@ -43,20 +44,50 @@ tree.walk(&mut |p| println!("  pid {}: {}", p.pid, p.name));
 The same primitive an anti-cheat engine uses to map a target is the first
 thing a runtime guard needs before it can watch what an agent *does*.
 
+## Phase 1 — runtime connections
+
+`sentinel observe <pid>` composes the process tree with the connection table
+and emits a machine-readable JSON snapshot a dashboard or policy engine can
+consume. Connections are attributed to PIDs via `GetExtendedTcpTable` — the
+same call a firewall/EDR uses to ask *why is this agent holding an outbound
+socket to an unknown host?*
+
+```bash
+cargo run --bin sentinel-cli           # observe self
+cargo run --bin sentinel-cli <pid>     # observe a target agent
+```
+
+```json
+{
+  "pid": 8656,
+  "observed_at": "1784310400",
+  "process_tree": { "pid": 8656, "name": "agent.exe", "children": [] },
+  "connections": [
+    { "pid": 8656, "local_addr": "192.168.0.159:63869",
+      "remote_addr": "32.195.92.226:443", "state": "ESTABLISHED" }
+  ]
+}
+```
+
+On this Windows host the observer correctly resolves live connections
+(including external `ESTABLISHED` sockets) to their owning PID. The Linux
+connection path is scheduled for Phase 1 parity; until then it returns an
+empty list rather than fabricated data.
+
 ## Build & test
 
 ```bash
 cargo build
-cargo test      # 3 tests, green on Windows + Linux
+cargo test      # 5 tests, green on Windows
 ```
 
 Requires Rust 1.74+. On Windows, the `windows-sys` feature set pulls the
-Toolhelp + Process Status APIs.
+Toolhelp, Process Status, and IP Helper APIs.
 
 ## Architecture (target)
 
 ```
-sentinel-observer   (Rust)  — process/network/fs observation  ◀ today: process tree
+sentinel-observer   (Rust)  — process/network/fs observation  ◀ today: process + net
 sentinel-policy     (Rust)  — declarative rules + anomaly baseline → ALLOW/DENY/FLAG
 sentinel-agent      (Py)    — wraps an agent's tool-call layer, enforces verdicts
 sentinel-dash       (Next)  — live threat graph, kill-switch, session replay

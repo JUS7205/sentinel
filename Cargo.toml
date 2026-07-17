@@ -7,17 +7,14 @@ license = "MIT"
 repository = "https://github.com/JUS7205/sentinel"
 
 [dependencies]
-# Cross-platform process-tree enumeration.
-[target.'cfg(windows)'.dependencies]
-# Uses Win32 via windows-sys; kept minimal for the Phase-0 spike.
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+# Cross-platform process-tree + connection enumeration via Win32 on Windows.
 windows-sys = { version = "0.52", features = [
     "Win32_Foundation",
     "Win32_System_Diagnostics_ToolHelp",
     "Win32_System_ProcessStatus",
     "Win32_System_Threading",
+    "Win32_NetworkManagement_IpHelper",
+    "Win32_Networking_WinSock",
 ] }
-
-[target.'cfg(unix)'.dependencies]
-# Linux/macOS: read via procfs / libc is optional; we use std + /proc.
-
-[dev-dependencies]
