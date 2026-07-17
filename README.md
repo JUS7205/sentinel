@@ -112,11 +112,23 @@ Toolhelp, Process Status, IP Helper, and Threading APIs.
 
 ## Architecture (target)
 
+```mermaid
+flowchart LR
+  A[Agent process] -->|spawns| B[Process tree]
+  A -->|sockets| C[Network egress]
+  A -->|writes| D[Filesystem]
+  B & C & D --> E[sentinel observe]
+  E --> F[sentinel::policy]
+  F -->|allow| G[run]
+  F -->|flag| H[alert]
+  F -->|deny| I([kill-switch: TerminateProcess])
 ```
+
+```text
 sentinel-observer   (Rust)  — process/network/fs observation  ◀ today: all three
 sentinel-policy     (Rust)  — declarative rules + anomaly baseline → allow/flag/deny
 sentinel-agent      (Py)    — wraps an agent's tool-call layer, enforces verdicts
-sentinel-dash       (Next)  — live threat graph, kill-switch, session replay
+sentinel-dash       (Next)   — live threat graph, kill-switch, session replay  ◀ ghostkit
 ```
 
 Local heuristic scoring uses a Qwen 3B model served via `llama_cpp.server`.
