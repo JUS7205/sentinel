@@ -3,7 +3,7 @@ name = "sentinel"
 version = "0.1.0"
 edition = "2021"
 description = "Sentinel — runtime behavioral guard for AI agents (observer core)"
-license = "MIT"
+license = "Apache-2.0"
 repository = "https://github.com/JUS7205/sentinel"
 
 [dependencies]
