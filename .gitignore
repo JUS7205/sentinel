@@ -3,6 +3,12 @@
 **/*.rs.bk
 Cargo.lock
 
+# Python (agent adapter)
+__pycache__/
+*.pyc
+.pytest_cache/
+.venv/
+
 # OS
 .DS_Store
 Thumbs.db

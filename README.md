@@ -21,9 +21,11 @@ and a filesystem watch + static policy engine with a kill-switch (Phase 2).
 | 0 — Spike | Cross-platform process-tree enumeration (Windows + Linux) | ✅ done, tests green |
 | 1 — Observe | Network connection enumeration (Windows `GetExtendedTcpTable`, PID-attributed) + `observe` CLI emitting JSON | ✅ done, tests green |
 | 2 — Enforce | Filesystem watch, static policy engine, `enforce` CLI with Windows kill-switch (`TerminateProcess`) | ✅ done, tests green |
-| 3 — MVP | Python agent adapter, Next.js dashboard (live threat graph + kill button), anomaly baseline | 🟡 next |
+| 3 — MVP | Python agent adapter (`agent/` — policy mirror + guarded tools), Next.js dashboard (live threat graph + kill button), anomaly baseline | 🟡 adapter done, 19 tests; dashboard + baseline next |
 | 4 — v1 | Behavioral anomaly baseline, session replay, auto-containment, multi-agent | ⚪ planned |
 | 5 — stretch | ML anomaly detection, autonomous red-team loop, eBPF/Win32 parity | ⚪ planned |
+
+Docs: [MITRE ATLAS mapping](docs/atlas.md) · [runtime guard vs prompt filter](docs/runtime-vs-prompt.md) · [agent adapter](agent/README.md)
 
 ## What the code does (today)
 
@@ -107,6 +109,7 @@ paths and marks credential drops (`.env`, `id_rsa`, `*.pem`, …) as sensitive.
 ```bash
 cargo build
 cargo test      # 15 tests, green on Windows
+python -m pytest agent/tests -q   # agent adapter: 19 tests, green
 ```
 
 Requires Rust 1.74+. On Windows, the `windows-sys` feature set pulls the
@@ -129,7 +132,7 @@ flowchart LR
 ```text
 sentinel-observer   (Rust)  — process/network/fs observation  ◀ today: all three
 sentinel-policy     (Rust)  — declarative rules + anomaly baseline → allow/flag/deny
-sentinel-agent      (Py)    — wraps an agent's tool-call layer, enforces verdicts
+sentinel-agent      (Py)    — wraps an agent's tool-call layer, enforces verdicts  ◀ today: `agent/` (Phase 3)
 sentinel-dash       (Next)   — live threat graph, kill-switch, session replay  ◀ ghostkit
 ```
 
