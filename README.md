@@ -23,7 +23,7 @@ and a filesystem watch + static policy engine with a kill-switch (Phase 2).
 | 2 — Enforce | Filesystem watch, static policy engine, `enforce` CLI with Windows kill-switch (`TerminateProcess`) | ✅ done, tests green |
 | 3 — MVP | Python agent adapter (`agent/` — policy mirror + guarded tools), Next.js dashboard (live threat graph + kill button), anomaly baseline | 🟡 adapter done, 19 tests; dashboard + baseline next |
 | 4 — v1 | Behavioral anomaly baseline, session replay, auto-containment, multi-agent | ⚪ planned |
-| 5 — stretch | ML anomaly detection, autonomous red-team loop, eBPF/Win32 parity | ⚪ planned |
+| 5 — stretch | ML anomaly detection → AI-assisted defense (triage copilots), autonomous red-team loop, eBPF/Win32 parity | ⚪ planned |
 
 Docs: [MITRE ATLAS mapping](docs/atlas.md) · [runtime guard vs prompt filter](docs/runtime-vs-prompt.md) · [agent adapter](agent/README.md)
 
