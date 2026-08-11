@@ -1,36 +1,36 @@
 # sentinel
 
-[![Build status](https://ci.appveyor.com/api/projects/status/github/JUS7205/sentinel?svg=true)](https://ci.appveyor.com/project/JUS7205/sentinel)
+[![CI](https://github.com/JUS7205/sentinel/actions/workflows/ci.yml/badge.svg)](https://github.com/JUS7205/sentinel/actions/workflows/ci.yml)
 
-> An anti-cheat engine for AI agents. Runtime behavioral guard — not a prompt filter.
+Runtime guard for AI agents — process tree, network egress, and filesystem
+watch with a policy engine and a kill-switch. The thesis: the attacks that
+actually land on autonomous agents (prompt injection → silent exfiltration,
+tool-output poisoning, agent hijack) happen in **runtime behavior**, not in
+the text a prompt filter sees. So this treats the agent the way an
+anti-cheat engine treats a game: watch what it does, and stop it when it
+violates policy.
 
-The industry ships prompt-level filters. The real attacks against autonomous
-agents — prompt injection → silent exfiltration, tool-output poisoning,
-agent hijack — live in **runtime behavior**, not text. Sentinel applies
-anti-cheat / EDR discipline to agents: it watches an agent's process tree,
-network, and filesystem at runtime and enforces a policy, with a kill-switch.
-
-This is a work in progress. What exists today is real, compiling, and tested:
-a process-tree observer (Phase 0), a PID-attributed network observer (Phase 1),
-and a filesystem watch + static policy engine with a kill-switch (Phase 2).
+I built this after years on the anti-cheat side. The same primitives that
+detect a cheater who never touches game memory are the ones an agent guard
+needs — observation at the syscall boundary, not after the fact.
 
 ## Status
 
 | Phase | Scope | State |
 |-------|-------|-------|
-| 0 — Spike | Cross-platform process-tree enumeration (Windows + Linux) | ✅ done, tests green |
-| 1 — Observe | Network connection enumeration (Windows `GetExtendedTcpTable`, PID-attributed) + `observe` CLI emitting JSON | ✅ done, tests green |
-| 2 — Enforce | Filesystem watch, static policy engine, `enforce` CLI with Windows kill-switch (`TerminateProcess`) | ✅ done, tests green |
-| 3 — MVP | Python agent adapter (`agent/` — policy mirror + guarded tools), Next.js dashboard (live threat graph + kill button), anomaly baseline | 🟡 adapter done, 19 tests; dashboard + baseline next |
-| 4 — v1 | Behavioral anomaly baseline, session replay, auto-containment, multi-agent | ⚪ planned |
-| 5 — stretch | ML anomaly detection → AI-assisted defense (triage copilots), autonomous red-team loop, eBPF/Win32 parity | ⚪ planned |
+| 0 — Spike | Cross-platform process-tree enumeration (Windows + Linux) | done, tests green |
+| 1 — Observe | Network connections via `GetExtendedTcpTable`, PID-attributed; `observe` CLI emitting JSON | done, tests green |
+| 2 — Enforce | Filesystem watch, static policy engine, `enforce` CLI with Windows kill-switch | done, tests green |
+| 3 — MVP | Python agent adapter (`agent/`), guarded tool-calls, dashboard + anomaly baseline | adapter done (19 tests); dashboard + baseline next |
+| 4 — v1 | Behavioral anomaly baseline, session replay, auto-containment, multi-agent | planned |
+| 5 — stretch | ML anomaly detection, triage copilots, autonomous red-team loop, eBPF/Win32 parity | planned |
 
 Docs: [MITRE ATLAS mapping](docs/atlas.md) · [runtime guard vs prompt filter](docs/runtime-vs-prompt.md) · [agent adapter](agent/README.md)
 
-## What the code does (today)
+## What's here today
 
-`tree_for(pid)` returns the full process subtree rooted at `pid`, on both
-Windows and Linux, behind one API:
+`tree_for(pid)` returns the full process subtree under one API on Windows and
+Linux:
 
 ```rust
 use sentinel::tree_for;
@@ -41,81 +41,48 @@ println!("this agent spawned {} process(es) total", tree.size());
 tree.walk(&mut |p| println!("  pid {}: {}", p.pid, p.name));
 ```
 
-- **Windows** — `CreateToolhelp32Snapshot` + `Process32First/Next` (user-mode,
-  no admin). Process names resolved via `K32EnumProcessModules`.
+- **Windows** — `CreateToolhelp32Snapshot` + `Process32First/Next`, no admin
+  required. Names resolved via `K32EnumProcessModules`.
 - **Linux/macOS** — `/proc/<pid>/status` parsing (`PPid`, `Name`).
-- The watchdog (`ProcessTree::all()`) enumerates the whole host forest.
+- `ProcessTree::all()` enumerates the whole host forest for the watchdog.
 
-The same primitive an anti-cheat engine uses to map a target is the first
-thing a runtime guard needs before it can watch what an agent *does*.
-
-## Phase 1 — runtime connections
-
-`sentinel observe <pid>` composes the process tree with the connection table
-and emits a machine-readable JSON snapshot a dashboard or policy engine can
-consume. Connections are attributed to PIDs via `GetExtendedTcpTable` — the
-same call a firewall/EDR uses to ask *why is this agent holding an outbound
-socket to an unknown host?*
+`sentinel observe <pid>` composes the tree with the connection table and
+emits a JSON snapshot — connections attributed to owning PIDs via
+`GetExtendedTcpTable`, the same call an EDR uses to answer *why is this agent
+holding a socket to an unknown host?*
 
 ```bash
 cargo run --bin sentinel-cli           # observe self
 cargo run --bin sentinel-cli <pid>     # observe a target agent
 ```
 
-```json
-{
-  "pid": 8656,
-  "observed_at": "1784310400",
-  "process_tree": { "pid": 8656, "name": "agent.exe", "children": [] },
-  "connections": [
-    { "pid": 8656, "local_addr": "192.168.0.159:63869",
-      "remote_addr": "32.195.92.226:443", "state": "ESTABLISHED" }
-  ]
-}
-```
-
-On this Windows host the observer correctly resolves live connections
-(including external `ESTABLISHED` sockets) to their owning PID. The Linux
-connection path is scheduled for Phase 1 parity; until then it returns an
-empty list rather than fabricated data.
-
-## Phase 2 — policy + kill-switch
-
 `sentinel enforce <pid> --policy policy.json` evaluates a declarative policy
-against the live snapshot and, on `deny`, triggers the kill-switch (Windows:
-`TerminateProcess` on the watched root). The engine is pure and unit-tested:
-a `Snapshot` in, a `Verdict { allow | flag | deny, reasons }` out.
+against the live snapshot and, on `deny`, calls `TerminateProcess` on the
+watched root. The engine is pure and unit-tested: a `Snapshot` in, a
+`Verdict { allow | flag | deny, reasons }` out. Rules are data, not code —
+`policy.deny.json` flags external egress, blocklisted hosts, credential
+writes, and known-bad binaries. The fs watcher marks credential drops
+(`.env`, `id_rsa`, `*.pem`, …) as sensitive.
 
-```bash
-cargo run --bin sentinel-cli enforce <pid> --policy policy.deny.json
-```
+## Real output
 
-```json
-{
-  "pid": 2,
-  "verdict": "allow",
-  "reasons": [],
-  "kill_switch": false
-}
-```
-
-Rules are data, not code — `policy.deny.json` (in-repo) flags external egress,
-blocklisted hosts, credential writes, and known-bad binaries. The filesystem
-watch (`fs::scan_dir` + `fs::diff`) detects new/modified files under watched
-paths and marks credential drops (`.env`, `id_rsa`, `*.pem`, …) as sensitive.
+`examples/observe-self.json` is a live run of `sentinel observe` on this
+machine (Windows, via `GetExtendedTcpTable`) — not a fixture. On this host it
+sees no open sockets for a freshly spawned CLI process, which is honest: a
+process that opens none has none reported.
 
 ## Build & test
 
 ```bash
 cargo build
-cargo test      # 15 tests, green on Windows
-python -m pytest agent/tests -q   # agent adapter: 19 tests, green
+cargo test                        # 15 tests
+python -m pytest agent/tests -q   # agent adapter: 19 tests
 ```
 
-Requires Rust 1.74+. On Windows, the `windows-sys` feature set pulls the
-Toolhelp, Process Status, IP Helper, and Threading APIs.
+Requires Rust 1.74+. CI runs fmt + clippy + tests on Windows and Linux, plus
+the agent's pytest suite.
 
-## Architecture (target)
+## Architecture
 
 ```mermaid
 flowchart LR
@@ -130,19 +97,21 @@ flowchart LR
 ```
 
 ```text
-sentinel-observer   (Rust)  — process/network/fs observation  ◀ today: all three
-sentinel-policy     (Rust)  — declarative rules + anomaly baseline → allow/flag/deny
-sentinel-agent      (Py)    — wraps an agent's tool-call layer, enforces verdicts  ◀ today: `agent/` (Phase 3)
-sentinel-dash       (Next)   — live threat graph, kill-switch, session replay  ◀ ghostkit
+sentinel-observer   (Rust)  — process/network/fs observation      ◀ today: all three
+sentinel-policy     (Rust)  — declarative rules + anomaly baseline
+sentinel-agent      (Py)    — wraps an agent's tool-call layer     ◀ today: `agent/` (Phase 3)
+sentinel-dash       (Next)  — live threat graph + kill-switch      ◀ ghostkit
 ```
 
 Local heuristic scoring uses a Qwen 3B model served via `llama_cpp.server`.
 
-## Principles
+## Known limits (honest list)
 
-- **Real before pretty.** Every module ships compiling and tested.
-- **Runtime, not text.** Behavior is the attack surface.
-- **Gold-only.** No committed databases, configs, or boilerplate.
+- The Linux connection path returns an empty list rather than fabricated data
+  — parity is scheduled with Phase 1.
+- The kill-switch is Windows-only (`TerminateProcess`) for now.
+- `sysmon`-level telemetry (ETW/Win32) is future work; today we read the
+  observable surface directly.
 
 ## License
 
